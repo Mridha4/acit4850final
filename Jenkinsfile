@@ -1,14 +1,14 @@
 // Jenkinsfile
 /*
  * Author: Saad Al-Mridha
- * Date: April 15, 2024
- * Description: This Jenkinsfile is configured to build, test, and conditionally run a Java application.
- *              It supports building with Maven, counting lines of code, and conditionally running the
- *              application based on the input parameters. Designed for execution on macOS with an M1 chip.
+ * Date: April 15,2024
+ * Description: This Jenkinsfile is designed to build, test, and optionally run a Java application.
+ *              It is configured to work on a Jenkins server running on Windows, ensuring compatibility
+ *              with Windows command syntax while accommodating development on macOS M1.
  */
 
 pipeline {
-    agent any  
+    agent any  // Specifies that the pipeline can run on any available agent.
 
     parameters {
         booleanParam(name: 'RUN', defaultValue: false, description: 'Whether to Run the Code')
@@ -16,14 +16,14 @@ pipeline {
     }
 
     environment {
-        PATH = "/usr/local/bin:/usr/bin:$PATH"  
+        PATH = "${env.PATH}"  
     }
 
     stages {
         stage('Build') {
             steps {
                 echo 'Starting Java Build...'
-                sh 'mvn -B -DskipTests clean install'  // Executes Maven to build the project without running tests.
+                bat 'mvn -B -DskipTests clean install'  // Executes Maven with Windows batch command.
                 echo 'Java Build Complete.'
             }
         }
@@ -31,14 +31,13 @@ pipeline {
         stage('Code Quantity') {
             steps {
                 script {
-                    // Counts lines in the specified Java file.
-                    def lineCount = sh(script: "wc -l < src/main/java/App.java", returnStdout: true).trim()
+                    // Execute Windows commands to count lines and list files.
+                    def lineCount = bat(script: 'find /c /v "" src\\main\\java\\App.java', returnStdout: true).trim()
                     echo "Number of lines in App.java: ${lineCount}"
 
-                    // Lists files in the top level directory of the repository.
-                    def files = sh(script: "ls -1", returnStdout: true).trim().split("\n")
+                    def files = bat(script: "dir /b", returnStdout: true).trim().split("\\r?\\n")
                     echo "Listing files in the repository (top level):"
-                    for (file in files) {
+                    files.each { file ->
                         echo file
                     }
                 }
@@ -50,8 +49,8 @@ pipeline {
                 expression { params.BUILD_TYPE == 'Development' }
             }
             steps {
-                sh 'mvn test'  // Runs Maven to execute tests.
-                junit 'target/surefire-reports/*.xml'  // Publishes test results.
+                bat 'mvn test'
+                junit 'target\\surefire-reports\\*.xml'
             }
         }
 
@@ -60,7 +59,7 @@ pipeline {
                 expression { params.RUN == true }
             }
             steps {
-                sh './deliver.sh'  
+                bat 'call deliver.bat'  // Ensure deliver.bat is prepared for Windows.
             }
         }
 
@@ -68,14 +67,14 @@ pipeline {
             steps {
                 echo "Build ${params.BUILD_TYPE} completed successfully."
                 echo "I have now completed ACIT 4850!"
-                echo "Student Number: A01339129, Group Number: 44"
+                echo "Student Number: A01339129, Group Number: 44" 
             }
         }
     }
 
     post {
         always {
-            echo "Pipeline execution complete!"  
+            echo "Pipeline execution complete!"
         }
     }
 }
