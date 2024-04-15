@@ -4,22 +4,26 @@
  * Date: April 15, 2024
  * Description: This Jenkinsfile is configured to build, test, and conditionally run a Java application.
  *              It supports building with Maven, counting lines of code, and conditionally running the
- *              application based on the input parameters.
+ *              application based on the input parameters. Designed for execution on macOS with an M1 chip.
  */
 
 pipeline {
-    agent any
+    agent any  
 
     parameters {
         booleanParam(name: 'RUN', defaultValue: false, description: 'Whether to Run the Code')
         string(name: 'BUILD_TYPE', defaultValue: 'Development', description: 'Type of build')
     }
 
+    environment {
+        PATH = "/usr/local/bin:/usr/bin:$PATH"  
+    }
+
     stages {
         stage('Build') {
             steps {
                 echo 'Starting Java Build...'
-                sh 'mvn -B -DskipTests clean install'
+                sh 'mvn -B -DskipTests clean install'  // Executes Maven to build the project without running tests.
                 echo 'Java Build Complete.'
             }
         }
@@ -27,11 +31,11 @@ pipeline {
         stage('Code Quantity') {
             steps {
                 script {
-                    // Using shell command to count lines in App.java
+                    // Counts lines in the specified Java file.
                     def lineCount = sh(script: "wc -l < src/main/java/App.java", returnStdout: true).trim()
                     echo "Number of lines in App.java: ${lineCount}"
 
-                    // List files in the top level directory
+                    // Lists files in the top level directory of the repository.
                     def files = sh(script: "ls -1", returnStdout: true).trim().split("\n")
                     echo "Listing files in the repository (top level):"
                     for (file in files) {
@@ -46,8 +50,8 @@ pipeline {
                 expression { params.BUILD_TYPE == 'Development' }
             }
             steps {
-                sh 'mvn test'
-                junit 'target/surefire-reports/*.xml'
+                sh 'mvn test'  // Runs Maven to execute tests.
+                junit 'target/surefire-reports/*.xml'  // Publishes test results.
             }
         }
 
@@ -56,7 +60,7 @@ pipeline {
                 expression { params.RUN == true }
             }
             steps {
-                sh './deliver.sh'
+                sh './deliver.sh'  
             }
         }
 
@@ -71,7 +75,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline execution complete!"
+            echo "Pipeline execution complete!"  
         }
     }
 }
